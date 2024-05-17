@@ -9,13 +9,27 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:apex"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "apex",
+        "aliases": [
+          "apex"
+        ],
+        "extensions": [
+          "cls",
+          "apex"
+        ]
+      }
+    ],
     "commands": [
       {
-        "command": "apex-helper.helloWorld",
-        "title": "Hello World"
+        "command": "apex-helper.format",
+        "title": "(Bad) Format Apex Files"
       }
     ]
   },
