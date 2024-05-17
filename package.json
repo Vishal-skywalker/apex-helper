@@ -1,13 +1,15 @@
 {
   "name": "apex-helper",
-  "displayName": "",
-  "description": "",
+  "displayName": "Apex Helper - Formatter",
+  "description": "Salesforce Apex",
+  "publisher": "VishalSkywalker",
   "version": "0.0.1",
+  "repository": "https://github.com/Vishal-skywalker/apex-helper",
   "engines": {
     "vscode": "^1.89.0"
   },
   "categories": [
-    "Other"
+    "Formatters"
   ],
   "activationEvents": [
     "onLanguage:apex"
@@ -27,10 +29,6 @@
       }
     ],
     "commands": [
-      {
-        "command": "apex-helper.format",
-        "title": "(Bad) Format Apex Files"
-      }
     ]
   },
   "scripts": {
