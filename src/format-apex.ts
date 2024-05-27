@@ -59,9 +59,9 @@ function indent(text: string, depth: number, mlc: boolean): Indentation {
     if (text.startsWith('}')) {
         temp = --depth;
     }
-    if (!(mlc || multilineComment)) {
-        text = addSpaces(text);
-    }
+    // if (!(mlc || multilineComment)) {
+    //     text = addSpaces(text);
+    // }
     if (text.startsWith('*') && mlc) {
         text = ' ' + text;
     }
