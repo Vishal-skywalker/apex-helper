@@ -1,6 +1,17 @@
 import * as vscode from 'vscode';
 
+type Indentation = {
+    text: string,
+    depth: number,
+    multilineComment: boolean
+}
+
+let TAB = ' '.repeat(4);
+
 export default function format(doc: vscode.TextDocument): vscode.TextEdit[] {
+    if (typeof vscode.window.activeTextEditor?.options.indentSize === 'number') {
+        TAB = ' '.repeat(vscode.window.activeTextEditor?.options.indentSize);
+    }
     const editList: vscode.TextEdit[] = [];
     try {
         let depth: number = 0;
@@ -35,6 +46,9 @@ function countDepth(depth: number, text: string): number {
 }
 
 function indent(text: string, depth: number, mlc: boolean): Indentation {
+    if (!text.replaceAll(/[\s]/ig, '')) {
+        return { text, depth, multilineComment: mlc };
+    }
     let temp = depth;
     let multilineComment = mlc;
     if (mlc && text.endsWith('*/')) {
@@ -45,18 +59,21 @@ function indent(text: string, depth: number, mlc: boolean): Indentation {
     if (text.startsWith('}')) {
         temp = --depth;
     }
+    if (!(mlc || multilineComment)) {
+        text = addSpaces(text);
+    }
     if (text.startsWith('*') && mlc) {
         text = ' ' + text;
     }
-    while (depth) {
-        text = ('\t' + text);
-        --depth;
-    }
+    text = TAB.repeat(depth) + text;
     return { text, depth: temp, multilineComment };
 }
 
-type Indentation = {
-    text: string,
-    depth: number,
-    multilineComment: boolean
+function addSpaces(args: string): string {
+    const spacedArgs = args
+        .replace(/\s*([\+\-\*\/\=\^\&\|\%]+)\s*/g, ' $1 ') // add spaces
+        .replace(/ +/g, ' ') // ensure no duplicate spaces
+        .replace(/\( /g, '(') // remove space after (
+        .replace(/ \)/g, ')'); // remove space before )
+    return spacedArgs;
 }
