@@ -4,6 +4,6 @@ All notable changes to the "apex-helper" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [released]
 
-- Initial release
+- Added a 2 features and see `README.md`
