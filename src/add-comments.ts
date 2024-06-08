@@ -28,7 +28,7 @@ export default async function addComment() {
 
             if (highlighted) {
                 // Detect and remove existing comment if any
-                const { cleanedCode, commentRange, descValue } = await removeExistingComment(editor, selectionRange);
+                const { cleanedCode, commentRange, descValue, dateValue } = await removeExistingComment(editor, selectionRange);
 
                 // Analyze the cleaned code (without the old comment)
                 let initialIndentation = cleanedCode.match(/^\s*/)?.[0] || ''; // Get leading spaces for indentation
@@ -36,7 +36,7 @@ export default async function addComment() {
 
                 if (methodInfo !== 'Unknown format') {
                     // Insert new comment snippet
-                    insertCommentSnippet(editor, commentRange.start, methodInfo, initialIndentation, descValue);
+                    insertCommentSnippet(editor, commentRange.start, methodInfo, initialIndentation, descValue, dateValue);
                 }
             }
         }
@@ -45,7 +45,7 @@ export default async function addComment() {
     }
 }
 
-async function removeExistingComment(editor: vscode.TextEditor, selectionRange: vscode.Range): Promise<{ cleanedCode: string, commentRange: vscode.Range, descValue: string }> {
+async function removeExistingComment(editor: vscode.TextEditor, selectionRange: vscode.Range): Promise<{ cleanedCode: string, commentRange: vscode.Range, descValue: string, dateValue: string }> {
     // Get the full text including comments
     const fullText = editor.document.getText(selectionRange);
     
@@ -70,6 +70,11 @@ async function removeExistingComment(editor: vscode.TextEditor, selectionRange: 
         const descMatch = match[0].match(descriptionPattern);
         const descValue = descMatch ? descMatch[1].trim() : '';
 
+        // Extract description value
+        const datePattern = /@Date\s+(.*)/;
+        const dateMatch = match[0].match(datePattern);
+        const dateValue = dateMatch ? dateMatch[1].trim() : '';
+
         // Remove the comment from the document
         await editor.edit(editBuilder => {
             editBuilder.delete(commentRange);
@@ -77,10 +82,10 @@ async function removeExistingComment(editor: vscode.TextEditor, selectionRange: 
 
         // Return the cleaned code, adjusted range, and description value
         const cleanedCode = fullText.replace(match[0], '').trimStart();
-        return { cleanedCode, commentRange: new vscode.Range(selectionRange.start, selectionRange.end), descValue };
+        return { cleanedCode, commentRange: new vscode.Range(selectionRange.start, selectionRange.end), descValue, dateValue};
     }
 
-    return { cleanedCode: fullText, commentRange: selectionRange, descValue: '' };
+    return { cleanedCode: fullText, commentRange: selectionRange, descValue: '' , dateValue: ''};
 }
 
 function analyzeCode(code: string): string | MethodInfo {
@@ -126,7 +131,7 @@ function analyzeCode(code: string): string | MethodInfo {
     return 'Unknown format';
 }
 
-function insertCommentSnippet(editor: vscode.TextEditor, position: vscode.Position, methodInfo: MethodInfo | string, initialIndentation: string, descValue: string) {
+function insertCommentSnippet(editor: vscode.TextEditor, position: vscode.Position, methodInfo: MethodInfo | string, initialIndentation: string, descValue: string, dateValue: string) {
     const snippet = new vscode.SnippetString(`${initialIndentation}/**\n`);
     if(descValue){
         snippet.appendText(`${initialIndentation} * @description ${descValue}\n`);
@@ -138,6 +143,12 @@ function insertCommentSnippet(editor: vscode.TextEditor, position: vscode.Positi
     if (typeof methodInfo !== 'string' && methodInfo !== 'Class') {
         for (const key in methodInfo.arguments) {
             snippet.appendText(`${initialIndentation} * @param ${key} ${methodInfo.arguments[key]}\n`);
+        }
+        if(dateValue){
+            snippet.appendText(`${initialIndentation} * @Date ${dateValue}\n`);
+        }else{
+            const formattedDate = `${new Date().getDate()} ${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][new Date().getMonth()]} ${new Date().getFullYear()}`;
+            snippet.appendText(`${initialIndentation} * @Date ${formattedDate}\n`);
         }
         snippet.appendText(`${initialIndentation} * @return ${methodInfo.returnType}\n`);
     }
