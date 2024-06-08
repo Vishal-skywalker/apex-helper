@@ -27,15 +27,15 @@ export default async function addComment() {
             const highlighted = editor.document.getText(selectionRange);
 
             if (highlighted) {
-                // Detect and remove existing comment if any
+                // Removing and Preserving Description and Date Value
                 const { cleanedCode, commentRange, descValue, dateValue } = await removeExistingComment(editor, selectionRange);
 
-                // Analyze the cleaned code (without the old comment)
-                let initialIndentation = cleanedCode.match(/^\s*/)?.[0] || ''; // Get leading spaces for indentation
+                // Analyis code after removing existing comment
+                let initialIndentation = cleanedCode.match(/^\s*/)?.[0] || '';
                 const methodInfo = analyzeCode(cleanedCode);
 
                 if (methodInfo !== 'Unknown format') {
-                    // Insert new comment snippet
+                    //adding new comment with existing description and date value
                     insertCommentSnippet(editor, commentRange.start, methodInfo, initialIndentation, descValue, dateValue);
                 }
             }
@@ -46,15 +46,12 @@ export default async function addComment() {
 }
 
 async function removeExistingComment(editor: vscode.TextEditor, selectionRange: vscode.Range): Promise<{ cleanedCode: string, commentRange: vscode.Range, descValue: string, dateValue: string }> {
-    // Get the full text including comments
     const fullText = editor.document.getText(selectionRange);
     
-    // Detect the existing Javadoc comment block (/** ... */)
     const leadingJavadocPattern = /\/\*\*[\s\S]*?\*\//;
     const match = fullText.match(leadingJavadocPattern);
 
     if (match) {
-        // Remove the leading Javadoc comment and adjust the range
         const startPos = selectionRange.start;
         const startOffset = editor.document.offsetAt(startPos);
         const commentStart = startOffset + fullText.indexOf(match[0]);
@@ -65,24 +62,23 @@ async function removeExistingComment(editor: vscode.TextEditor, selectionRange: 
             editor.document.positionAt(commentEnd)
         );
 
-        // Extract description value
+        // Extracting Description Value from existing comment
         const descriptionPattern = /@description\s+(.*)/;
         const descMatch = match[0].match(descriptionPattern);
         const descValue = descMatch ? descMatch[1].trim() : '';
 
-        // Extract description value
+        // Extracting Date Value from existing comment
         const datePattern = /@Date\s+(.*)/;
         const dateMatch = match[0].match(datePattern);
         const dateValue = dateMatch ? dateMatch[1].trim() : '';
 
-        // Remove the comment from the document
+        // removing the comment from selection
         await editor.edit(editBuilder => {
             editBuilder.delete(commentRange);
         });
 
-        // Return the cleaned code, adjusted range, and description value
         const cleanedCode = fullText.replace(match[0], '').trimStart();
-        return { cleanedCode, commentRange: new vscode.Range(selectionRange.start, selectionRange.end), descValue, dateValue};
+        return { cleanedCode, commentRange: new vscode.Range(selectionRange.start, selectionRange.end), descValue, dateValue };
     }
 
     return { cleanedCode: fullText, commentRange: selectionRange, descValue: '' , dateValue: ''};
@@ -91,37 +87,35 @@ async function removeExistingComment(editor: vscode.TextEditor, selectionRange: 
 function analyzeCode(code: string): string | MethodInfo {
     code = code.trim();
 
-    // Check if it's a class
+    // check for class
     if (/\sclass\s/.test(code)) {
         return 'Class';
     }
 
-    // Check if it's a method
+    // Check for method
     if (/\w+\s+\w+\s*\(.*\)\s*{/.test(code)) {
-        // Extract method signature
         let signature = code.substring(0, code.indexOf('{')).trim();
 
-        // Remove method keywords and annotations
         const methodRegex = new RegExp(METHOD_KEYWORDS.join('|'), 'g');
         signature = signature.replace(methodRegex, '').trim();
 
-        // Split signature into return type and method name + args
-        const parts = signature.split(/\s+/);
-        const returnType = parts[0];
-        const argsString = signature.substring(signature.indexOf('(') + 1, signature.indexOf(')')).trim();
+        const methodParts = signature.match(/(.*)\s+(\w+)\s*\((.*)\)/);
+        if (!methodParts) return 'Unknown format';
+
+        const returnType = methodParts[1].trim();
+        const argsString = methodParts[3].trim();
 
         const methodInfo: MethodInfo = {
             returnType,
             arguments: {}
         };
 
-        // Extract arguments
         if (argsString) {
-            const argsArray = argsString.split(',');
+            const argsArray = parseArguments(argsString);
             argsArray.forEach(arg => {
-                const [argType, argName] = arg.trim().split(/\s+/);
+                const [argType, argName] = splitArgTypeAndName(arg);
                 if (argType && argName) {
-                    methodInfo.arguments[argName] = argType;
+                    methodInfo.arguments[argName] = argType.trim();
                 }
             });
         }
@@ -129,6 +123,37 @@ function analyzeCode(code: string): string | MethodInfo {
     }
 
     return 'Unknown format';
+}
+
+function parseArguments(argsString: string): string[] {
+    let args = [];
+    let depth = 0;
+    let currentArg = '';
+
+    for (let i = 0; i < argsString.length; i++) {
+        const char = argsString[i];
+
+        if (char === ',' && depth === 0) {
+            args.push(currentArg.trim());
+            currentArg = '';
+        } else {
+            currentArg += char;
+            if (char === '<' || char === '(') depth++;
+            if (char === '>' || char === ')') depth--;
+        }
+    }
+    if (currentArg.trim()) args.push(currentArg.trim());
+
+    return args;
+}
+
+function splitArgTypeAndName(arg: string): [string, string] {
+    const match = arg.match(/(.+)\s+(\w+)$/);
+    if (match) {
+        const [, argType, argName] = match;
+        return [argType, argName];
+    }
+    return ['', ''];
 }
 
 function insertCommentSnippet(editor: vscode.TextEditor, position: vscode.Position, methodInfo: MethodInfo | string, initialIndentation: string, descValue: string, dateValue: string) {
