@@ -47,7 +47,7 @@ export default async function addComment() {
 
 async function removeExistingComment(editor: vscode.TextEditor, selectionRange: vscode.Range): Promise<{ cleanedCode: string, commentRange: vscode.Range, descValue: string, dateValue: string }> {
     const fullText = editor.document.getText(selectionRange);
-    
+
     const leadingJavadocPattern = /\/\*\*[\s\S]*?\*\//;
     const match = fullText.match(leadingJavadocPattern);
 
@@ -81,7 +81,7 @@ async function removeExistingComment(editor: vscode.TextEditor, selectionRange: 
         return { cleanedCode, commentRange: new vscode.Range(selectionRange.start, selectionRange.end), descValue, dateValue };
     }
 
-    return { cleanedCode: fullText, commentRange: selectionRange, descValue: '' , dateValue: ''};
+    return { cleanedCode: fullText, commentRange: selectionRange, descValue: '', dateValue: '' };
 }
 
 function analyzeCode(code: string): string | MethodInfo {
@@ -93,7 +93,7 @@ function analyzeCode(code: string): string | MethodInfo {
     }
 
     // Check for method
-    if (/\w+\s+\w+\s*\(.*\)\s*{/.test(code)) {
+    if (/.+\(.*\)\s*{/.test(code)) {
         let signature = code.substring(0, code.indexOf('{')).trim();
 
         const methodRegex = new RegExp(METHOD_KEYWORDS.join('|'), 'g');
@@ -158,22 +158,23 @@ function splitArgTypeAndName(arg: string): [string, string] {
 
 function insertCommentSnippet(editor: vscode.TextEditor, position: vscode.Position, methodInfo: MethodInfo | string, initialIndentation: string, descValue: string, dateValue: string) {
     const snippet = new vscode.SnippetString(`${initialIndentation}/**\n`);
-    if(descValue){
+    if (descValue) {
         snippet.appendText(`${initialIndentation} * @description ${descValue}\n`);
-    }else{
-        snippet.appendText(`${initialIndentation} * @description add your description here\n`);
+    } else {
+        snippet.appendText(`${initialIndentation} * @description `);
+        snippet.appendPlaceholder('add your description here');
+        snippet.appendText(`\n`);
     }
-    snippet.appendText(`${initialIndentation} * \n`);
+    if (dateValue) {
+        snippet.appendText(`${initialIndentation} * @Date ${dateValue}\n`);
+    } else {
+        const formattedDate = `${new Date().getDate()} ${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][new Date().getMonth()]} ${new Date().getFullYear()}`;
+        snippet.appendText(`${initialIndentation} * @Date ${formattedDate}\n`);
+    }
 
-    if (typeof methodInfo !== 'string' && methodInfo !== 'Class') {
+    if (typeof methodInfo !== 'string') {
         for (const key in methodInfo.arguments) {
             snippet.appendText(`${initialIndentation} * @param ${key} ${methodInfo.arguments[key]}\n`);
-        }
-        if(dateValue){
-            snippet.appendText(`${initialIndentation} * @Date ${dateValue}\n`);
-        }else{
-            const formattedDate = `${new Date().getDate()} ${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][new Date().getMonth()]} ${new Date().getFullYear()}`;
-            snippet.appendText(`${initialIndentation} * @Date ${formattedDate}\n`);
         }
         snippet.appendText(`${initialIndentation} * @return ${methodInfo.returnType}\n`);
     }
