@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import Formatter from './auto-formatter/formatters/apexFormatter.js';
 
 type Indentation = {
     text: string,
@@ -16,16 +17,38 @@ export default function format(doc: vscode.TextDocument): vscode.TextEdit[] {
     try {
         let depth: number = 0;
         let mlc = false;
-        for (let i = 0; i < doc.lineCount; i++) {
-            const line = doc.lineAt(i);
-            let text: string = line.text.trim();
-            const obj = indent(text, depth, mlc);
-            text = obj.text;
-            depth = obj.depth;
-            mlc = obj.multilineComment;
-            depth = countDepth(depth, text);
-            editList.push(vscode.TextEdit.replace(line.range, text));
-        }
+        const formattedDoc = new Formatter(TAB).format(doc.getText());
+        // for (let i = 0; i < doc.lineCount; i++) {
+        //     const line = doc.lineAt(i);
+        //     let text: string = line.text.trim();
+        //     if (text.indexOf('//') === 0) {
+        //         text = TAB.repeat(depth) + text;
+        //     } else if (line.isEmptyOrWhitespace) {
+        //         continue;
+        //     } else {
+        //         const obj = indent(text, depth, mlc);
+        //         text = obj.text;
+        //         depth = obj.depth;
+        //         mlc = obj.multilineComment;
+        //         depth = countDepth(depth, text);
+        //     }
+        //     editList.push(vscode.TextEdit.replace(line.range, text));
+        // }
+        const edit = vscode.TextEdit.replace(
+            new vscode.Range(
+                new vscode.Position(0, 0),
+                doc.lineAt(doc.lineCount - 1).range.end
+            ),
+            formattedDoc
+        );
+        editList.push(edit);
+        // const fullRange = new vscode.Range(
+        //     doc.positionAt(0),
+        //     doc.positionAt(doc.getText().length)
+        // );
+        // vscode.window.activeTextEditor?.edit(editBuilder => {
+        //     editBuilder.replace(fullRange, formattedDoc);
+        // });
     } catch (error) {
         console.log('error', error)
     }
@@ -46,9 +69,6 @@ function countDepth(depth: number, text: string): number {
 }
 
 function indent(text: string, depth: number, mlc: boolean): Indentation {
-    if (!text.replaceAll(/[\s]/ig, '')) {
-        return { text, depth, multilineComment: mlc };
-    }
     let temp = depth;
     let multilineComment = mlc;
     if (mlc && text.endsWith('*/')) {
