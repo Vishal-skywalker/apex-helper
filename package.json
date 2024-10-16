@@ -3,7 +3,8 @@
   "displayName": "Apex Helper - Formatter",
   "description": "Salesforce Apex",
   "publisher": "VishalSkywalker",
-  "version": "2.0.0",
+  "version": "2.0.1",
+  "icon": "logo.png",
   "repository": "https://github.com/Vishal-skywalker/apex-helper",
   "engines": {
     "vscode": "^1.89.0"
